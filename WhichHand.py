@@ -20,17 +20,7 @@
 #   A few ideas I've gathered so far is in observing what kind of math 
 #   operations can be used to detect when the landmark positionings are
 #   within a specific gesture formation relative to each other.
-#   
-#   I feel like some of the contents of linear algebra contain operations
-#   relevant to this. I'm not sure which. A first step though will be in
-#   having code that reads out a value regarding the coordinate of a single
-#   landmark. Followed by code that detects the distance between two 
-#   landmarks.
-#   
-#   This program was created with the intention of gaining familiarity with
-#   the mediapipe library. 
-#
-# *****************************************************************************
+#  
 import mediapipe as mp
 import cv2 as cv
 
@@ -52,6 +42,10 @@ while True:
     # Live Webcam Feed Block
     sucess, img = cap.read()
     img = cv.resize(img, (imgWidth, imgHeight))
+   
+    # Using cv.flip I was able to mirror the webcam feed and correct the
+    # inconsistency around the mix up of left and right hand detection.
+    img = cv.flip(img, 2) 
     key = cv.waitKey(1) & 0xFF
 
     # Process Hand Framework
