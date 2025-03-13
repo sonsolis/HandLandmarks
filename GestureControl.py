@@ -2,7 +2,7 @@ import mediapipe as mp
 import cv2 as cv
 import time
 import math
-import threading
+import datetime 
 import queue
 
 # Gesture Recognizer Model Imports
@@ -19,7 +19,6 @@ visionRunningMode = vision.RunningMode
 
 # Shared Global Variable for Recognized Gestures
 latestGestureInfo = None
-gestureLock = threading.Lock()
 gestureQueue = queue.Queue()
 
 # Gesture Recognizer Callback Function
@@ -33,15 +32,6 @@ def gestureCallback(result, image, timestamp_ms):
                 "timestamp": timestamp_ms
                 }
         gestureQueue.put(gestureData)
-        with gestureLock:
-            latestGestureInfo = {
-                        "gestureName": topGesture.category_name,
-                        "score": topGesture.score,
-                        "timestamp": timestamp_ms
-                    }
-        
-            # print(f"Recognized gesture: {topGesture.category_name} "
-            #      f"Score: {topGesture.score:.2f} at time: {timestamp_ms}ms")
 
 # Gesture Recognizer Setup 
 options = gestureRecognizerOptions(
@@ -74,8 +64,6 @@ handsModule = mp.solutions.hands
 # Hand Landmark Setup
 hand = handsModule.Hands(static_image_mode=False, min_detection_confidence=0.7, min_tracking_confidence=0.7, max_num_hands=1)
 
-############################################################
-
 # Hand Landmark Functions
 def getLandmarkCo(img, landmarkNum):
     for handLandmarks in results.multi_hand_landmarks:
@@ -91,10 +79,6 @@ def getLandmarkCo(img, landmarkNum):
 
 # Math Variables
 normalVector = [300,0]
-
-############################################################
-
-# Math Variables
 angle = 0
 tuckLength = 0
 
@@ -131,9 +115,7 @@ def getAngle(vector1, vector2):
 def gestureCaller(gesture):
     match gesture:
         case "Open_Palm":
-            time.sleep(1)
-        case "Closed_Fist":
-            time.sleep(1)
+            print("Hold")
         case "Thumb_Up":
             print("Take Off")
         case "Thumb_Down":
@@ -142,7 +124,6 @@ def gestureCaller(gesture):
             pass
 
 def angleCaller(angle, tuckLength):
-    
     match tuckLength:
         case _ if tuckLength >= 50:
 
@@ -172,6 +153,19 @@ def angleCaller(angle, tuckLength):
         case _:
             pass
 
+############################################################
+
+# Cool Down Variables
+addOneSecond = datetime.datetime.now() + datetime.timedelta(seconds=1) 
+countDown = 0
+newCycle = 0
+coolDownOver = True
+newCycle = datetime.datetime.now() + datetime.timedelta(seconds=1) 
+
+############################################################
+
+# Main Method
+
 with gestureRecognizer.create_from_options(options) as recognizer:
 
     while cap.isOpened():
@@ -186,20 +180,21 @@ with gestureRecognizer.create_from_options(options) as recognizer:
             # Gather LandMark Coordinates 
             indexTipCX, indexTipCY = getLandmarkCo(img, indexFingerTipLandmark)
             palmBaseCX, palmBaseCY = getLandmarkCo(img, wristLandmark)
-            
+
             middleTipCX, middleTipCY = getLandmarkCo(img, middleFingerTipLandmark)
             # Create Line Vector between Landmarks
             lineVector = getLineVector(indexTipCX, indexTipCY, palmBaseCX, palmBaseCY)
-            
+
             tuckVector = getLineVector(indexTipCX, indexTipCY, middleTipCX, middleTipCY)
 
             tuckLength = getLength(tuckVector)
 
             # Gather Angle Between Line Vector and Normal Vector
             angle = getAngle(normalVector, lineVector)
-            
+
             # Landmark Coordinates  
 #             cv.putText(img, f"Index Finger Tip X-Coord: {indexTipCX}", (80, 390), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+
 #             
 #             cv.putText(img, f"Index Finger Tip Y-Coord: {indexTipCY}", (80, 410), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 # 
@@ -209,37 +204,50 @@ with gestureRecognizer.create_from_options(options) as recognizer:
 #             
 #             # Line Vectors
 #             cv.putText(img, f"Line Vector: {lineVector}", (40, 370), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-            
+
 #             cv.putText(img, f"Tuck Vector: {tuckLength}", (40, 330), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 #              
-#             # Angle
-#             cv.putText(img, f"Angle: {angle}", (40,270), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-            
-#             while not gestureQueue.empty():
-#                 gestureData = gestureQueue.get()
-#                 # Detected Gesture
-#                 cv.putText(img, "Detected Gesture: " + latestGestureInfo["gestureName"], (40, 290), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-# 
-            #with gestureLock:
-             #   if latestGestureInfo is not None:
 
-                    # Detected Gesture
-              #      cv.putText(img, "Detected Gesture: " + latestGestureInfo["gestureName"], (40, 290), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-         
+        # Angle
+        cv.putText(img, f"Angle: {angle}", (40,270), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+
         if not _:
             break
-        
+
         rgbImg = cv.cvtColor(img,  cv.COLOR_BGR2RGB)
         mpImg = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgbImg)
         current_time_ms = int(time.time() *1000)
         recognizer.recognize_async(mpImg, current_time_ms)
 
-        if not gestureQueue.empty(): 
+        while not gestureQueue.empty():
             gestureData = gestureQueue.get()
-            gestureCaller(latestGestureInfo["gestureName"])
-        else:    
-            angleCaller(angle, tuckLength)
+#            print("loop")
+            if gestureData["gestureName"] in ["Open_Palm","Thumb_Up","Thumb_Down"]: 
+                # print("Gesture Detected")
+                gestureCaller(gestureData["gestureName"])
+                current = datetime.datetime.now()
+                countDown = 5
+                addOneSecond = current+datetime.timedelta(seconds=1)
+                newCycle = current + datetime.timedelta(seconds=1)
+                coolDownOver = False
+            
+            if gestureData["gestureName"] in ["None", "Pointing_Up"]:
+                # print("Break Condition")
+                gestureQueue = queue.Queue() 
+                break
 
+        if datetime.datetime.now() > addOneSecond and countDown != 0:
+            # print("loop 1")
+            countDown -= 1
+            countCurrent = datetime.datetime.now()
+            addOneSecond = countCurrent + datetime.timedelta(seconds= 1)
+
+        if datetime.datetime.now() > newCycle:
+            # print("loop 2")
+            coolDownOver = True
+
+        if coolDownOver == True:
+            angleCaller(angle, tuckLength)
 
         cv.imshow("Live Stream Mode", img)
         if key == ord('q'):

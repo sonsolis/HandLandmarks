@@ -1,9 +1,9 @@
-import mediapipe as mp
-import cv2 as cv
-import math
+import mediapipe as mp 
+import cv2 as cv 
+import math 
 
-camNum = 0
-imgHeight = 480
+camNum = 0 
+imgHeight = 480 
 imgWidth = 620
 quitKey = 'q'
 
@@ -60,8 +60,8 @@ while True:
     _, img = cap.read()
     img = cv.resize(img, (imgWidth, imgHeight))
     key = cv.waitKey(1) & 0xFF
-    
     results = hand.process(cv.cvtColor(img, cv.COLOR_BGR2RGB))
+    
     if  results.multi_hand_landmarks != None:
         # Gather LandMark Coordinates 
         indexTipCX, indexTipCY = getLandmarkCo(img, indexFingerTipLandMark)
@@ -89,9 +89,9 @@ while True:
         cv.putText(img, f"Angle: {angle}", (40,270), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
         
 
-        print(f"Index Finger Tip X-Coord:{indexTipCX}\nIndex Finger Tip Y-Coord:{indexTipCY}")
+        # print(f"Index Finger Tip X-Coord:{indexTipCX}\nIndex Finger Tip Y-Coord:{indexTipCY}")
 
-        print(f"Palm Base X-Coord:{palmBaseCX}\nPalm Base Y-Coord{palmBaseCY}")
+        # print(f"Palm Base X-Coord:{palmBaseCX}\nPalm Base Y-Coord{palmBaseCY}")
 
 
     cv.imshow("HandLandmark Coordinate", img)
