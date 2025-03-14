@@ -1,3 +1,4 @@
+import KeyPressModule as kp
 import VectorAngle as vec 
 import mediapipe as mp
 import cv2 as cv
@@ -100,6 +101,7 @@ tuckLength = 0
 # Gesture Control Variables
 vals = [0,0,0,0]
 controlDrone = False
+kp.init()
 
 # Gesture Control Functions
 def gestureCaller(gesture):
@@ -197,25 +199,6 @@ with gestureRecognizer.create_from_options(options) as recognizer:
             # Gather Angle Between Line Vector and Normal Vector
             angle = vec.getAngle(normalVector, lineVector)
 
-            # Landmark Coordinates  
-#             cv.putText(img, f"Index Finger Tip X-Coord: {indexTipCX}", (80, 390), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-
-#             
-#             cv.putText(img, f"Index Finger Tip Y-Coord: {indexTipCY}", (80, 410), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-#k
-#             cv.putText(img, f"Palm Base X-Coord: {palmBaseCX}", (120, 430), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-# 
-#             cv.putText(img, f"Palm Base Y-Coord: {palmBaseCY}", (120, 450), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-#             
-#             # Line Vectors
-#             cv.putText(img, f"Line Vector: {lineVector}", (40, 370), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-
-#             cv.putText(img, f"Tuck Vector: {tuckLength}", (40, 330), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-#              
-
-        # Angle
-#        cv.putText(img, f"Angle: {angle}", (40,270), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-
         if not _:
             break
 
@@ -259,6 +242,8 @@ with gestureRecognizer.create_from_options(options) as recognizer:
             me.send_rc_control(vals[0], vals[1], vals[2], vals[3])
             pass
 
+        if kp.getKey("e"): me.emergency()
+        
         cv.imshow("Live Stream Mode", img)
         if key == ord('q'):
             break
