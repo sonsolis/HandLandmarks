@@ -1,9 +1,13 @@
+import VectorAngle as vec 
 import mediapipe as mp
 import cv2 as cv
+import datetime 
 import time
 import math
-import datetime 
 import queue
+
+# Tello Drone Imports
+from djitellopy import tello
 
 # Gesture Recognizer Model Imports
 from mediapipe.tasks import python
@@ -39,6 +43,15 @@ options = gestureRecognizerOptions(
         running_mode=visionRunningMode.LIVE_STREAM,
         result_callback=gestureCallback,)
 
+###########################################################
+
+# Tello Drone Variables
+me = tello.Tello()
+me.connect()
+print(me.get_battery())
+
+# Tello Drone Functions
+    
 ###########################################################
 
 # OpenCV Setup Variables
@@ -82,92 +95,85 @@ normalVector = [300,0]
 angle = 0
 tuckLength = 0
 
-# Math Functions
-def getLineVector(cx1, cy1, cx2, cy2):
-    lineVector = [cx2-cx1, cy2-cy1]
-    return lineVector
-
-def getLength(vector):
-    length = math.sqrt(pow(vector[0], 2) + pow(vector[1],2))
-    return length
-
-def getDotProduct(vector1, vector2):
-    dotProduct = (vector1[0] * vector2[0]) + (vector1[1] * vector2[1])
-    return dotProduct
-
-def getCrossProduct(vector1, vector2):
-    crossProduct = (vector1[0] * vector2[1])-(vector1[1] * vector2[0])
-    return crossProduct
-
-def getAngle(vector1, vector2):
-    dotProduct = getDotProduct(vector1, vector2)
-    crossProduct = getCrossProduct(vector1, vector2)
-    angle = math.atan2(crossProduct, dotProduct)
-    angle = math.degrees(angle)
-    if angle < 0:
-        angle = angle + 360
-    return angle 
-
-
 ############################################################
+
+# Gesture Control Variables
+vals = [0,0,0,0]
+controlDrone = False
 
 # Gesture Control Functions
 def gestureCaller(gesture):
     match gesture:
         case "Open_Palm":
             print("Hold")
+            me.send_rc_control(0, 0, 0, 0)
         case "Thumb_Up":
             print("Take Off")
+            if not me.is_flying:
+                me.takeoff()
         case "Thumb_Down":
             print("Land")
+            if me.is_flying:
+                me.land()
         case _:
             pass
 
 def angleCaller(angle, tuckLength):
+    lr, fb, ud, yv = 0, 0, 0, 0
+    speed = 25
+
     match tuckLength:
         case _ if tuckLength >= 50:
-
             match angle:
                 case _ if 0 <= angle <= 45 or 320 <= angle <= 0:
                     print("left")
+                    lr = -speed
                 case _ if 45 <= angle <= 135:
                     print("forward")
+                    fb = speed
                 case _ if 135 <= angle <= 225:
                     print("right")
+                    lr = speed
                 case _ if 225 <= angle <= 320:
                     print("backward")
+                    fb = -speed
                 case _:
                     pass
+
         case _ if tuckLength <= 50:
             match angle:
                 case _ if 0 <= angle <= 45 or 320 <= angle <= 0:
-                    print("rotae left")
+                    print("rotate left")
+                    yv = speed
                 case _ if 45 <= angle <= 135:
                     print("up")
+                    ud = speed
                 case _ if 135 <= angle <= 225:
                     print("rotate right")
+                    yv = -speed
                 case _ if 225 <= angle <= 320:
                     print("down")
+                    ud = -speed
                 case _:
                     pass
         case _:
             pass
+
+    return [lr, fb, ud, yv]
 
 ############################################################
 
 # Cool Down Variables
 addOneSecond = datetime.datetime.now() + datetime.timedelta(seconds=1) 
-countDown = 0
-newCycle = 0
-coolDownOver = True
 newCycle = datetime.datetime.now() + datetime.timedelta(seconds=1) 
+countDown = 0
+coolDownOver = True
 
 ############################################################
 
 # Main Method
 
 with gestureRecognizer.create_from_options(options) as recognizer:
-
     while cap.isOpened():
         _, img = cap.read()
         img = cv.resize(img, (imgWidth, imgHeight))
@@ -177,27 +183,26 @@ with gestureRecognizer.create_from_options(options) as recognizer:
         results = hand.process(cv.cvtColor(img, cv.COLOR_BGR2RGB))
 
         if  results.multi_hand_landmarks != None:
+
             # Gather LandMark Coordinates 
             indexTipCX, indexTipCY = getLandmarkCo(img, indexFingerTipLandmark)
             palmBaseCX, palmBaseCY = getLandmarkCo(img, wristLandmark)
-
             middleTipCX, middleTipCY = getLandmarkCo(img, middleFingerTipLandmark)
             # Create Line Vector between Landmarks
-            lineVector = getLineVector(indexTipCX, indexTipCY, palmBaseCX, palmBaseCY)
+            lineVector = vec.getLineVector(indexTipCX, indexTipCY, palmBaseCX, palmBaseCY)
 
-            tuckVector = getLineVector(indexTipCX, indexTipCY, middleTipCX, middleTipCY)
+            tuckVector = vec.getLineVector(indexTipCX, indexTipCY, middleTipCX, middleTipCY) 
 
-            tuckLength = getLength(tuckVector)
-
+            tuckLength = vec.getLength(tuckVector)
             # Gather Angle Between Line Vector and Normal Vector
-            angle = getAngle(normalVector, lineVector)
+            angle = vec.getAngle(normalVector, lineVector)
 
             # Landmark Coordinates  
 #             cv.putText(img, f"Index Finger Tip X-Coord: {indexTipCX}", (80, 390), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 
 #             
 #             cv.putText(img, f"Index Finger Tip Y-Coord: {indexTipCY}", (80, 410), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
-# 
+#k
 #             cv.putText(img, f"Palm Base X-Coord: {palmBaseCX}", (120, 430), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 # 
 #             cv.putText(img, f"Palm Base Y-Coord: {palmBaseCY}", (120, 450), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
@@ -209,7 +214,7 @@ with gestureRecognizer.create_from_options(options) as recognizer:
 #              
 
         # Angle
-        cv.putText(img, f"Angle: {angle}", (40,270), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
+#        cv.putText(img, f"Angle: {angle}", (40,270), cv.FONT_HERSHEY_PLAIN, 2, (255, 0, 255), 2)
 
         if not _:
             break
@@ -226,10 +231,10 @@ with gestureRecognizer.create_from_options(options) as recognizer:
                 # print("Gesture Detected")
                 gestureCaller(gestureData["gestureName"])
                 current = datetime.datetime.now()
-                countDown = 5
                 addOneSecond = current+datetime.timedelta(seconds=1)
                 newCycle = current + datetime.timedelta(seconds=1)
                 coolDownOver = False
+                controlDrone = True
             
             if gestureData["gestureName"] in ["None", "Pointing_Up"]:
                 # print("Break Condition")
@@ -247,7 +252,12 @@ with gestureRecognizer.create_from_options(options) as recognizer:
             coolDownOver = True
 
         if coolDownOver == True:
-            angleCaller(angle, tuckLength)
+            vals = angleCaller(angle, tuckLength)
+            # angleCaller(angle, tuckLength)
+
+        if controlDrone == True:
+            me.send_rc_control(vals[0], vals[1], vals[2], vals[3])
+            pass
 
         cv.imshow("Live Stream Mode", img)
         if key == ord('q'):

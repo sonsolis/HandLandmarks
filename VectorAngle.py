@@ -11,6 +11,8 @@ indexFingerTipLandMark = 8
 palmBaseLandMark = 0
 normalVector = [0, 300]
 
+test = True 
+
 # Mediapipe framework for finding Hand Landmarks
 drawingModule = mp.solutions.drawing_utils
 handsModule = mp.solutions.hands
@@ -56,7 +58,7 @@ def getAngle(vector1, vector2):
         angle = angle + 360
     return angle
 
-while True:
+while test: 
     _, img = cap.read()
     img = cv.resize(img, (imgWidth, imgHeight))
     key = cv.waitKey(1) & 0xFF
